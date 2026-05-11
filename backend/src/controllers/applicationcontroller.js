@@ -1,4 +1,4 @@
-const Application = require('../models/Application');
+const Application = require('../models/application');
 
 // Citizen submits a new application
 exports.applyForCertificate = async (req, res) => {

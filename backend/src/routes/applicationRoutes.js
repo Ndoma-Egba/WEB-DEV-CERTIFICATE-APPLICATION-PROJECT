@@ -1,9 +1,9 @@
-var express = require('express');
-var router = express.Router();
+const express = require('express');
+const router = express.Router();
+const authMiddleware = require('../middleware/authmiddleware');
+const applicationController = require('../controllers/applicationcontroller');
 
-/* GET users listing. */
-router.get('/', function(req, res, next) {
-  res.send('respond with a resource');
-});
+router.post('/', authMiddleware.authenticate, applicationController.applyForCertificate);
+router.get('/mine', authMiddleware.authenticate, applicationController.getMyApplications);
 
 module.exports = router;
