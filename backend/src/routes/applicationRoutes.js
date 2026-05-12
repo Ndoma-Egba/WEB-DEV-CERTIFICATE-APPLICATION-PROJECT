@@ -7,10 +7,16 @@ const applicationController = require('../controllers/applicationcontroller');
 router.post(
   '/',
   authMiddleware.authenticate,
-  uploadDocuments.array('documents', 5),
+  authMiddleware.requireCitizen,
+  uploadDocuments.any(),
   applicationController.applyForCertificate
 );
-router.get('/mine', authMiddleware.authenticate, applicationController.getMyApplications);
+router.get(
+  '/mine',
+  authMiddleware.authenticate,
+  authMiddleware.requireCitizen,
+  applicationController.getMyApplications
+);
 router.get(
   '/:id/documents/:filename',
   authMiddleware.authenticate,

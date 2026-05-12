@@ -22,3 +22,21 @@ exports.requireAdmin = (req, res, next) => {
 
   next();
 };
+
+exports.requireCitizen = (req, res, next) => {
+  if (req.user?.role !== 'citizen') {
+    return res.status(403).json({ error: 'Citizen access required' });
+  }
+
+  next();
+};
+
+exports.requireRole = (...roles) => {
+  return (req, res, next) => {
+    if (!roles.includes(req.user?.role)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    next();
+  };
+};

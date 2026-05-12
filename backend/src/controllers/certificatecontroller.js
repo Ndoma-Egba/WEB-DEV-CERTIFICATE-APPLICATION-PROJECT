@@ -1,6 +1,20 @@
 const Certificate = require('../models/certificate');
 const { getCertificateFilePath } = require('../utils/generateCertificatePdf');
 
+// Citizen views their own accessible certificates
+exports.getMyCertificates = async (req, res) => {
+  try {
+    const certificates = await Certificate.find({
+      userId: req.user.id,
+      isAccessible: { $ne: false }
+    }).populate('applicationId');
+
+    res.json(certificates);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
 // Citizen downloads their certificate
 exports.downloadCertificate = async (req, res) => {
   try {
@@ -8,6 +22,9 @@ exports.downloadCertificate = async (req, res) => {
     if (!certificate) return res.status(404).json({ error: 'Certificate not found' });
     if (req.user.role !== 'admin' && certificate.userId.toString() !== req.user.id) {
       return res.status(403).json({ error: 'You do not have access to this certificate' });
+    }
+    if (req.user.role !== 'admin' && certificate.isAccessible === false) {
+      return res.status(403).json({ error: 'Certificate access has been restricted' });
     }
 
     res.download(getCertificateFilePath(certificate), `${certificate.certificateNumber}.pdf`);
