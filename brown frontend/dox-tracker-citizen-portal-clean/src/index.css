@@ -1,0 +1,845 @@
+@import url("https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:wght@400;500;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  Global theme tokens
+  -------------------
+  CSS variables keep colors, borders, spacing, and shadows in one place. When
+  the brand changes later, edit these values first before touching components.
+*/
+:root {
+  --brand: #ff5733;
+  --brand-dark: #df4520;
+  --gold: #ffbd00;
+  --mint: #00a98f;
+  --violet: #7653de;
+  --bg: #fff9f5;
+  --panel: #ffffff;
+  --text: #1a0a00;
+  --muted: #765f55;
+  --border: #f0e0d6;
+  --field: #fbf7f3;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --success: #10b981;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --shadow: 0 18px 50px rgba(84, 35, 12, 0.08);
+  color: var(--text);
+  background: var(--bg);
+  font-family: "DM Sans", Arial, sans-serif;
+}
+
+/* The app fills the screen so pages can center content vertically when needed. */
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+/* Body owns the calm warm background used behind every page. */
+body {
+  margin: 0;
+  background:
+    linear-gradient(135deg, rgba(255, 87, 51, 0.06), transparent 30%),
+    linear-gradient(225deg, rgba(0, 169, 143, 0.08), transparent 28%),
+    var(--bg);
+}
+
+/* Border-box sizing makes width calculations predictable across components. */
+* {
+  box-sizing: border-box;
+}
+
+/* Native form controls inherit the same typography as the app. */
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* Headings and brand labels use Syne to preserve the prototype's personality. */
+h1,
+h2,
+h3,
+h4,
+.brand-mark {
+  font-family: "Syne", Arial, sans-serif;
+}
+
+/* Screen-reader-only text stays accessible without being visible on the page. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+/* The shell wraps navigation, page content, and toast feedback. */
+.portal-shell {
+  min-height: 100vh;
+}
+
+/* Sticky header keeps navigation available while citizens scroll long pages. */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 58px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(14px);
+}
+
+.brand-mark {
+  border: 0;
+  background: transparent;
+  color: var(--brand);
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.brand-mark span {
+  color: var(--violet);
+}
+
+/* Tabs are real buttons so keyboard and screen-reader users can navigate. */
+.nav-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.nav-tab {
+  min-height: 34px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0 14px;
+  background: transparent;
+  color: var(--muted);
+  font-family: "Syne", Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.nav-tab:hover {
+  border-color: var(--border);
+  background: var(--bg);
+}
+
+.nav-tab.active {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: #ffffff;
+}
+
+/* Auth pages use a soft banded background and centered card layout. */
+.auth-page {
+  display: grid;
+  min-height: calc(100vh - 58px);
+  place-items: center;
+  padding: 32px 16px;
+}
+
+.auth-card {
+  width: min(100%, 430px);
+  padding: 36px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.eyebrow {
+  display: inline-flex;
+  margin: 0 0 18px;
+  border-radius: 999px;
+  padding: 6px 14px;
+  background: #fff0eb;
+  color: var(--brand);
+  font-family: "Syne", Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.auth-card h2,
+.page-heading h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.form-intro,
+.page-heading p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Page containers control readable content width for dashboard/form/certs. */
+.page-container {
+  width: min(100%, 900px);
+  margin: 0 auto;
+  padding: 30px 24px 44px;
+}
+
+.page-container.narrow {
+  width: min(100%, 640px);
+}
+
+.page-heading {
+  margin-bottom: 26px;
+}
+
+/* Shared field styling keeps every input consistent. */
+.field-group {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 18px;
+}
+
+.field-group label,
+.certificate-fieldset legend {
+  color: var(--muted);
+  font-family: "Syne", Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.field-group input {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 14px;
+  background: var(--field);
+  color: var(--text);
+  outline: none;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.field-group input:focus {
+  border-color: var(--brand);
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(255, 87, 51, 0.1);
+}
+
+/* Button styles are shared across auth, forms, and card actions. */
+.primary-button,
+.secondary-button {
+  min-height: 46px;
+  border-radius: var(--radius-sm);
+  padding: 0 18px;
+  font-family: "Syne", Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.primary-button {
+  width: 100%;
+  border: 0;
+  background: var(--brand);
+  color: #ffffff;
+}
+
+.primary-button:hover {
+  background: var(--brand-dark);
+  transform: translateY(-1px);
+}
+
+.secondary-button {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+}
+
+.secondary-button:hover {
+  border-color: var(--muted);
+  background: var(--bg);
+}
+
+.auth-switch {
+  margin: 18px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.auth-switch button {
+  border: 0;
+  background: transparent;
+  color: var(--violet);
+  font-weight: 700;
+}
+
+/* Dashboard metric cards use status-specific color classes below. */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
+.stat-card {
+  display: grid;
+  gap: 9px;
+  min-height: 140px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  background: var(--panel);
+}
+
+.stat-card strong {
+  font-family: "Syne", Arial, sans-serif;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.stat-card span:last-child {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.stat-card.pending strong,
+.stat-card.pending .ui-icon {
+  color: var(--warning);
+}
+
+.stat-card.approved strong,
+.stat-card.approved .ui-icon {
+  color: var(--success);
+}
+
+.stat-card.rejected strong,
+.stat-card.rejected .ui-icon {
+  color: var(--danger);
+}
+
+.section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.section-title-row h3,
+.section-heading {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.section-title-row button {
+  min-height: 34px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 15px;
+  background: var(--brand);
+  color: #ffffff;
+  font-family: "Syne", Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.application-list,
+.certificate-list {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.application-item,
+.certificate-card,
+.form-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: 0 8px 24px rgba(84, 35, 12, 0.04);
+}
+
+.application-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+}
+
+.application-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.application-copy h4 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.application-copy p,
+.certificate-content p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.record-icon,
+.certificate-icon,
+.action-icon {
+  display: inline-grid;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 10px;
+}
+
+.record-icon.birth {
+  background: #eef5ff;
+  color: #2563eb;
+}
+
+.record-icon.marriage {
+  background: #f6efff;
+  color: var(--violet);
+}
+
+.record-icon.death {
+  background: #f5f5f4;
+  color: #57534e;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-family: "Syne", Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.status-badge span {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.status-badge.pending {
+  background: #fff7dd;
+  color: #a16207;
+}
+
+.status-badge.approved {
+  background: #e9fbf4;
+  color: #047857;
+}
+
+.status-badge.rejected {
+  background: #fff0f0;
+  color: #b91c1c;
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.action-card {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  min-height: 156px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  background: var(--panel);
+  text-align: left;
+  transition:
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.action-card:hover {
+  border-color: var(--brand);
+  transform: translateY(-2px);
+}
+
+.action-card strong {
+  font-family: "Syne", Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.action-card span:last-child {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.action-card.submit .action-icon {
+  background: linear-gradient(135deg, var(--brand), #ff8c42);
+  color: #ffffff;
+}
+
+.action-card.view .action-icon {
+  background: linear-gradient(135deg, var(--violet), #a879ff);
+  color: #ffffff;
+}
+
+/* Form panel and certificate picker. */
+.form-panel {
+  padding: 28px;
+}
+
+.certificate-fieldset {
+  margin: 0 0 22px;
+  border: 0;
+  padding: 0;
+}
+
+.certificate-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.certificate-option {
+  display: grid;
+  gap: 9px;
+  min-height: 92px;
+  place-items: center;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--field);
+  color: var(--text);
+  font-family: "Syne", Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.certificate-option span {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--brand);
+}
+
+.certificate-option.selected {
+  border-color: var(--brand);
+  background: #fff4f0;
+  color: var(--brand);
+}
+
+.upload-box {
+  display: grid;
+  width: 100%;
+  min-height: 138px;
+  place-items: center;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 22px;
+  background: var(--field);
+  color: var(--muted);
+  text-align: center;
+}
+
+.upload-box:hover {
+  border-color: var(--brand);
+  background: #fff9f7;
+}
+
+.upload-box strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.upload-box span {
+  font-size: 11px;
+}
+
+.uploaded-file {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.uploaded-file span {
+  flex: 1;
+  font-size: 13px;
+}
+
+.uploaded-file button {
+  border: 0;
+  background: transparent;
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.form-actions {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+/* Certificate progress and cards. */
+.progress-stepper {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin: 0 0 28px;
+  padding: 0;
+  list-style: none;
+}
+
+.progress-stepper li {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  color: var(--muted);
+}
+
+.progress-stepper li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 14px;
+  left: calc(50% + 20px);
+  width: calc(100% - 40px);
+  height: 2px;
+  background: var(--border);
+}
+
+.progress-stepper li.done:not(:last-child)::after {
+  background: var(--mint);
+}
+
+.progress-stepper li span {
+  z-index: 1;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--border);
+  font-family: "Syne", Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.progress-stepper li.done span {
+  background: var(--mint);
+  color: #ffffff;
+}
+
+.progress-stepper li.active span {
+  background: var(--brand);
+  color: #ffffff;
+}
+
+.progress-stepper p {
+  margin: 0;
+  font-family: "Syne", Arial, sans-serif;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.certificate-card {
+  display: flex;
+  gap: 18px;
+  padding: 22px;
+}
+
+.certificate-card.released .certificate-icon {
+  background: #e9fbf4;
+  color: var(--success);
+}
+
+.certificate-card.locked .certificate-icon {
+  background: #fff0f0;
+  color: var(--danger);
+}
+
+.certificate-content {
+  flex: 1;
+}
+
+.certificate-content h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.certificate-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.download-button,
+.preview-button {
+  min-height: 36px;
+  border-radius: var(--radius-sm);
+  padding: 0 15px;
+  font-family: "Syne", Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.download-button {
+  border: 0;
+  background: var(--mint);
+  color: #ffffff;
+}
+
+.preview-button {
+  border: 1px solid var(--violet);
+  background: transparent;
+  color: var(--violet);
+}
+
+.restricted-message {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  background: #fff0f0;
+  color: #991b1b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ui-icon {
+  display: inline-grid;
+  place-items: center;
+  font-family: "Syne", Arial, sans-serif;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: min(360px, calc(100vw - 32px));
+  border-radius: var(--radius-sm);
+  padding: 14px 18px;
+  background: var(--text);
+  color: #ffffff;
+  font-family: "Syne", Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(72px);
+  transition:
+    opacity 200ms ease,
+    transform 200ms ease;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast .ui-icon {
+  color: var(--mint);
+}
+
+/* Responsive rules keep the prototype usable on small screens. */
+@media (max-width: 720px) {
+  .site-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 16px;
+  }
+
+  .nav-tabs {
+    justify-content: flex-start;
+  }
+
+  .stats-grid,
+  .action-grid,
+  .certificate-options,
+  .form-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .application-item,
+  .certificate-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .status-badge {
+    align-self: flex-start;
+  }
+
+  .auth-card,
+  .form-panel {
+    padding: 24px;
+  }
+}
