@@ -56,3 +56,32 @@ exports.login = async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 };
+
+// Return the authenticated user's public profile
+exports.me = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ user: toSafeUser(user) });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+// Update the authenticated user's profile (name/email/password)
+exports.updateMe = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('+password');
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const { name, email, password } = req.body;
+    if (name) user.name = name;
+    if (email) user.email = email;
+    if (password) user.password = await bcrypt.hash(password, 10);
+
+    await user.save();
+    res.json({ user: toSafeUser(user) });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};

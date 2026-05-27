@@ -1,4 +1,15 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
+
+// Safe JSON parser for responses that may be empty or non-JSON
+async function parseJsonSafe(res) {
+  try {
+    const text = await res.text();
+    if (!text) return null;
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
 
 /*
   DOXTracker Citizen Portal
@@ -15,6 +26,7 @@ const NAV_ITEMS = [
   { id: "signup", label: "Signup" },
   { id: "login", label: "Login" },
   { id: "dashboard", label: "Dashboard" },
+  { id: "profile", label: "Profile" },
   { id: "submit", label: "Apply" },
   { id: "certificates", label: "Certificates" },
 ];
@@ -65,35 +77,6 @@ const RECENT_APPLICATIONS = [
   },
 ];
 
-// Certificate records are separated from the visual cards. This is the same
-// shape you can store in MongoDB later: type/title/ref/status/registry.
-const CERTIFICATES = [
-  {
-    id: "DOX-2026-0077",
-    type: "Marriage Certificate",
-    title: "Okonkwo & Eze",
-    issuedAt: "30 Apr 2026",
-    registry: "Lagos State Registry",
-    released: true,
-  },
-  {
-    id: "DOX-2026-0031",
-    type: "Birth Certificate",
-    title: "Ngozi Okonkwo",
-    issuedAt: "5 Mar 2026",
-    registry: "Lagos State Registry",
-    released: true,
-  },
-  {
-    id: "DOX-2026-0091",
-    type: "Birth Certificate",
-    title: "Chidi Okonkwo",
-    issuedAt: "Pending release",
-    registry: "Lagos State Registry",
-    released: false,
-  },
-];
-
 // These options drive the certificate-type picker on the application form.
 const CERTIFICATE_TYPES = [
   { id: "birth", label: "Birth", symbol: "B" },
@@ -101,13 +84,40 @@ const CERTIFICATE_TYPES = [
   { id: "death", label: "Death", symbol: "D" },
 ];
 
+// Required documents for each certificate type
+const REQUIRED_DOCUMENTS = {
+  birth: [
+    { name: "Hospital Record", description: "Medical/hospital records from birth" },
+    { name: "Parent/Guardian ID", description: "Valid identification of parents or guardians" },
+    { name: "Proof of Residence", description: "Proof of residence at time of birth" }
+  ],
+  marriage: [
+    { name: "Marriage License", description: "Official marriage license or certificate" },
+    { name: "Spouse IDs", description: "Valid identification of both spouses" },
+    { name: "Ceremony Proof", description: "Evidence of marriage ceremony (photos, invitation, etc.)" },
+    { name: "Witness Affidavit", description: "Affidavit from marriage witnesses" }
+  ],
+  death: [
+    { name: "Medical Death Report", description: "Medical report or death certificate from hospital/clinic" },
+    { name: "Next of Kin ID", description: "Valid identification of next of kin" },
+    { name: "Burial Permit", description: "Burial permit or funeral arrangement documents" },
+    { name: "Police Report", description: "Police report (if applicable)" }
+  ]
+};
+
 // Supporting document filenames used by the demo upload button.
 const SAMPLE_FILES = ["hospital_record.pdf", "nok_id_scan.pdf", "registry_form.pdf"];
 
 function App() {
   // activePage controls which page is visible. This replaces direct DOM
   // manipulation from the static prototype with normal React state.
-  const [activePage, setActivePage] = useState("signup");
+  const [activePage, setActivePage] = useState(() => {
+    try {
+      return window.localStorage.getItem('token') ? 'dashboard' : 'login';
+    } catch {
+      return 'login';
+    }
+  });
 
   // selectedCertificateType stores the form picker selection.
   const [selectedCertificateType, setSelectedCertificateType] = useState("birth");
@@ -117,6 +127,85 @@ function App() {
 
   // toastMessage stores short user feedback. An empty string means no toast.
   const [toastMessage, setToastMessage] = useState("");
+
+  // currentUser stores the signed-up / logged-in user for the demo UI.
+  const [currentUser, setCurrentUser] = useState(null);
+  const [myApplications, setMyApplications] = useState([]);
+  const [myCertificates, setMyCertificates] = useState([]);
+  const [certificateLoading, setCertificateLoading] = useState(false);
+
+  // Try to restore session from localStorage token on load
+  useEffect(() => {
+    const token = window.localStorage.getItem("token");
+    if (!token) return;
+
+    // attempt to fetch the current user's profile using the token
+    fetch('/api/auth/me', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data && data.user) {
+          setCurrentUser(data.user);
+          setActivePage('dashboard');
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  
+
+  // Fetch applications for the signed-in user
+  useEffect(() => {
+    async function loadApps() {
+      const token = window.localStorage.getItem('token');
+      if (!token || !currentUser) {
+        setMyApplications([]);
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/applications/mine', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to load applications');
+        const apps = (await parseJsonSafe(res)) || [];
+        setMyApplications(apps);
+      } catch (err) {
+        setMyApplications([]);
+      }
+    }
+
+    loadApps();
+  }, [currentUser]);
+
+  // Fetch certificates for the signed-in user
+  useEffect(() => {
+    async function loadCertificates() {
+      const token = window.localStorage.getItem('token');
+      if (!token || !currentUser) {
+        setMyCertificates([]);
+        setCertificateLoading(false);
+        return;
+      }
+
+      setCertificateLoading(true);
+      try {
+        const res = await fetch('/api/certificates/mine', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to load certificates');
+        const certificates = (await parseJsonSafe(res)) || [];
+        setMyCertificates(certificates);
+      } catch (err) {
+        setMyCertificates([]);
+      } finally {
+        setCertificateLoading(false);
+      }
+    }
+
+    loadCertificates();
+  }, [currentUser]);
 
   // toastTimer stores the current timeout without causing a re-render.
   const toastTimer = useRef(null);
@@ -131,8 +220,17 @@ function App() {
   // navigate changes the active page and scrolls to the top so every route-like
   // view starts in a predictable position.
   function navigate(pageId) {
+    // Protect routes: only allow access to non-auth pages when not signed in
+    const publicPages = ['login', 'signup'];
+    if (!currentUser && !publicPages.includes(pageId)) {
+      showToast('Please sign in to continue.');
+      setActivePage('login');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     setActivePage(pageId);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   // simulateUpload lets the interface demonstrate upload behavior without a
@@ -145,16 +243,46 @@ function App() {
 
   // submitApplication mimics the happy path and returns the user to dashboard.
   // The generated reference number gives the UI a realistic confirmation.
-  function submitApplication() {
-    const referenceNumber = Math.floor(Math.random() * 900) + 100;
-    showToast(`Application submitted. REF #DOX-2026-${referenceNumber}`);
-    window.setTimeout(() => navigate("dashboard"), 1200);
+  async function submitApplication(submission) {
+    // submission: { selectedCertificateType, uploadedFile, formFields }
+    const token = window.localStorage.getItem('token');
+    try {
+      const body = new FormData();
+      body.append('type', submission.selectedCertificateType || selectedCertificateType);
+      // include details as JSON string
+      body.append('details', JSON.stringify(submission.details || {}));
+
+      const res = await fetch('/api/applications', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body
+      });
+
+      if (!res.ok) throw new Error('Failed to submit application');
+      const app = (await parseJsonSafe(res)) || {};
+      showToast(`Application submitted. REF #${app._id || app.id || '—'}`);
+      // refresh applications list
+      const appsRes = await fetch('/api/applications/mine', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (appsRes.ok) setMyApplications(await appsRes.json());
+      window.setTimeout(() => navigate('dashboard'), 1200);
+    } catch (err) {
+      showToast(err.message || 'Submission failed');
+    }
   }
 
   // useMemo picks the current page component. It keeps the return block below
   // clean and makes future pages easy to add.
   const activePageView = useMemo(() => {
-    const commonProps = { navigate, showToast };
+    const commonProps = {
+      navigate,
+      showToast,
+      currentUser,
+      setCurrentUser,
+      myApplications,
+      setMyApplications,
+    };
 
     if (activePage === "login") {
       return <AuthPage mode="login" {...commonProps} />;
@@ -162,6 +290,10 @@ function App() {
 
     if (activePage === "dashboard") {
       return <DashboardPage {...commonProps} />;
+    }
+
+    if (activePage === "profile") {
+      return <ProfilePage {...commonProps} />;
     }
 
     if (activePage === "submit") {
@@ -179,11 +311,17 @@ function App() {
     }
 
     if (activePage === "certificates") {
-      return <CertificatesPage {...commonProps} />;
+      return (
+        <CertificatesPage
+          certificates={myCertificates}
+          loading={certificateLoading}
+          {...commonProps}
+        />
+      );
     }
 
     return <AuthPage mode="signup" {...commonProps} />;
-  }, [activePage, selectedCertificateType, uploadedFile]);
+  }, [activePage, selectedCertificateType, uploadedFile, currentUser, myApplications]);
 
   return (
     <div className="portal-shell">
@@ -191,7 +329,7 @@ function App() {
         DOXTracker Certificate Application System Citizen Portal
       </h1>
 
-      <Navigation activePage={activePage} onNavigate={navigate} />
+      <Navigation activePage={activePage} onNavigate={navigate} currentUser={currentUser} setCurrentUser={setCurrentUser} />
 
       <main>{activePageView}</main>
 
@@ -200,7 +338,13 @@ function App() {
   );
 }
 
-function Navigation({ activePage, onNavigate }) {
+function Navigation({ activePage, onNavigate, currentUser, setCurrentUser }) {
+  function handleLogout() {
+    window.localStorage.removeItem('token');
+    setCurrentUser(null);
+    onNavigate('login');
+  }
+
   return (
     <header className="site-header">
       <button
@@ -213,7 +357,11 @@ function Navigation({ activePage, onNavigate }) {
       </button>
 
       <nav className="nav-tabs" aria-label="Citizen portal sections">
-        {NAV_ITEMS.map((item) => (
+        {(
+          currentUser
+            ? NAV_ITEMS.filter((i) => i.id !== 'login' && i.id !== 'signup')
+            : NAV_ITEMS.filter((i) => i.id === 'login' || i.id === 'signup')
+        ).map((item) => (
           <button
             type="button"
             key={item.id}
@@ -224,29 +372,78 @@ function Navigation({ activePage, onNavigate }) {
           </button>
         ))}
       </nav>
+
+      <div className="user-actions">
+        {currentUser ? (
+          <>
+            <span className="user-name">{currentUser.name}</span>
+            <button type="button" className="secondary-button" onClick={handleLogout}>
+              Logout
+            </button>
+          </>
+        ) : null}
+      </div>
     </header>
   );
 }
 
-function AuthPage({ mode, navigate, showToast }) {
+function AuthPage({ mode, navigate, showToast, setCurrentUser, setMyApplications }) {
   const isSignup = mode === "signup";
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
 
-    if (isSignup) {
-      showToast("Account created. Please log in.");
-      navigate("login");
-      return;
-    }
+    const form = new FormData(event.target);
+    const name = form.get("fullName") || "Citizen";
+    const email = form.get("email") || "";
+    const password = form.get("password") || "";
 
-    showToast("Logged in successfully.");
-    navigate("dashboard");
+    try {
+      const url = isSignup ? '/api/auth/signup' : '/api/auth/login';
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(isSignup ? { name, email, password } : { email, password })
+      });
+
+      const data = (await parseJsonSafe(res)) || {};
+      if (!res.ok) throw new Error(data.error || 'Authentication failed');
+
+      // store token and set user
+      if (data.token) window.localStorage.setItem('token', data.token);
+      if (data.user) setCurrentUser(data.user);
+      showToast(isSignup ? 'Account created.' : 'Logged in successfully.');
+      // refresh applications after login/signup
+      if (setMyApplications) {
+        try {
+          const appsRes = await fetch('/api/applications/mine', {
+            headers: { Authorization: `Bearer ${data.token}` }
+          });
+          if (appsRes.ok) setMyApplications((await parseJsonSafe(appsRes)) || []);
+        } catch {}
+      }
+
+      navigate('dashboard');
+    } catch (err) {
+      showToast(err.message || 'Authentication error');
+    }
   }
 
   return (
     <section className="auth-page">
-      <form className="auth-card" onSubmit={handleSubmit}>
+      <div className="auth-split">
+        {!isSignup && (
+          <aside className="auth-hero">
+            <h3>DOXTracker</h3>
+            <p>
+              Apply for official birth, marriage, and death certificates.
+              Track application status and securely download your documents when approved.
+            </p>
+            <p className="auth-cta">Secure, simple, and official.</p>
+          </aside>
+        )}
+
+        <form className="auth-card" onSubmit={handleSubmit}>
         <p className="eyebrow">{isSignup ? "Citizen Portal" : "Secure Login"}</p>
         <h2>{isSignup ? "Create your account" : "Welcome back"}</h2>
         <p className="form-intro">
@@ -303,16 +500,17 @@ function AuthPage({ mode, navigate, showToast }) {
             {isSignup ? "Sign in" : "Create account"}
           </button>
         </p>
-      </form>
+        </form>
+      </div>
     </section>
   );
 }
 
-function DashboardPage({ navigate }) {
+function DashboardPage({ navigate, currentUser, myApplications }) {
   return (
     <section className="page-container">
       <PageHeading
-        title="Good morning, Ada"
+        title={`Good morning, ${currentUser?.name || "Ada"}`}
         description="Here is the current status of your certificate applications."
       />
 
@@ -333,9 +531,20 @@ function DashboardPage({ navigate }) {
       />
 
       <div className="application-list">
-        {RECENT_APPLICATIONS.map((application) => (
-          <ApplicationItem key={application.id} application={application} />
-        ))}
+        {myApplications && myApplications.length > 0 ? (
+          myApplications.map((application) => (
+            <ApplicationItem key={application._id || application.id} application={{
+              id: application._id || application.id,
+              type: application.type,
+              title: application.details?.fullName || application.title || 'Application',
+              submittedAt: new Date(application.createdAt).toLocaleDateString(),
+              status: application.status || 'pending',
+              icon: application.type || 'file'
+            }} />
+          ))
+        ) : (
+          <div className="empty-state">You have no applications yet.</div>
+        )}
       </div>
 
       <h3 className="section-heading">Quick Actions</h3>
@@ -370,7 +579,21 @@ function SubmissionPage({
 }) {
   function handleSubmit(event) {
     event.preventDefault();
-    onSubmit();
+    const form = new FormData(event.target);
+    const details = {
+      fullName: form.get('certificateNames'),
+      dateOfEvent: form.get('eventDate'),
+      placeOfEvent: form.get('eventLocation'),
+      parentNames: form.get('parentNames') || undefined,
+      spouseName: form.get('spouseName') || undefined,
+      nextOfKinName: form.get('nextOfKinName') || undefined,
+    };
+
+    onSubmit({
+      selectedCertificateType,
+      uploadedFile,
+      details
+    });
   }
 
   return (
@@ -413,6 +636,37 @@ function SubmissionPage({
           placeholder="e.g. Lagos, Ikeja LGA"
         />
 
+        {selectedCertificateType === 'birth' && (
+          <FormField
+            label="Parent(s) / Guardian"
+            name="parentNames"
+            placeholder="Names of parents or guardian"
+          />
+        )}
+
+        {selectedCertificateType === 'marriage' && (
+          <FormField label="Spouse Name" name="spouseName" placeholder="Name of spouse" />
+        )}
+
+        {selectedCertificateType === 'death' && (
+          <FormField label="Next of Kin" name="nextOfKinName" placeholder="Next of kin name" />
+        )}
+
+        <div className="field-group">
+          <label>Required Supporting Documents</label>
+          <div className="required-documents-list">
+            {REQUIRED_DOCUMENTS[selectedCertificateType]?.map((doc, index) => (
+              <div key={index} className="required-document-item">
+                <span className="document-badge">{index + 1}</span>
+                <div className="document-info">
+                  <strong>{doc.name}</strong>
+                  <p>{doc.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="field-group">
           <label>Upload Supporting Documents</label>
           <button type="button" className="upload-box" onClick={onUpload}>
@@ -449,7 +703,7 @@ function SubmissionPage({
   );
 }
 
-function CertificatesPage({ showToast }) {
+function CertificatesPage({ certificates, loading, showToast }) {
   return (
     <section className="page-container certificates-page">
       <PageHeading
@@ -460,14 +714,33 @@ function CertificatesPage({ showToast }) {
       <ProgressStepper />
 
       <div className="certificate-list">
-        {CERTIFICATES.map((certificate) => (
-          <CertificateCard
-            key={certificate.id}
-            certificate={certificate}
-            onDownload={() => showToast("Downloading certificate.")}
-            onPreview={() => showToast("Opening preview.")}
-          />
-        ))}
+        {loading ? (
+          <div className="empty-state">Loading certificates...</div>
+        ) : certificates && certificates.length > 0 ? (
+          certificates.map((certificate) => {
+            const application = certificate.applicationId || {};
+            return (
+              <CertificateCard
+                key={certificate._id || certificate.id}
+                certificate={{
+                  id: certificate._id || certificate.id,
+                  type: certificate.type,
+                  title: application.details?.fullName || 'Certificate',
+                  issuedAt: certificate.issueDate
+                    ? new Date(certificate.issueDate).toLocaleDateString()
+                    : 'Pending release',
+                  registry: 'Official Registry',
+                  released: certificate.isAccessible !== false,
+                  pdfUrl: certificate.pdfUrl,
+                }}
+                onDownload={() => showToast("Downloading certificate.")}
+                onPreview={() => showToast("Opening preview." )}
+              />
+            );
+          })
+        ) : (
+          <div className="empty-state">You have no certificates yet.</div>
+        )}
       </div>
     </section>
   );
@@ -501,6 +774,7 @@ function FormField({
   type = "text",
   placeholder = "",
   autoComplete = "off",
+  defaultValue = undefined,
 }) {
   return (
     <div className="field-group">
@@ -510,6 +784,7 @@ function FormField({
         name={name}
         type={type}
         placeholder={placeholder}
+        defaultValue={defaultValue}
         autoComplete={autoComplete}
       />
     </div>
@@ -616,6 +891,59 @@ function CertificateCard({ certificate, onDownload, onPreview }) {
         )}
       </div>
     </article>
+  );
+}
+
+function ProfilePage({ currentUser, setCurrentUser, showToast, navigate }) {
+  async function handleSubmit(e) {
+    e.preventDefault();
+    const form = new FormData(e.target);
+    const name = form.get('name');
+    const email = form.get('email');
+    const password = form.get('password');
+
+    try {
+      const token = window.localStorage.getItem('token');
+      const res = await fetch('/api/auth/me', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: token ? `Bearer ${token}` : ''
+        },
+        body: JSON.stringify({ name, email, password: password || undefined })
+      });
+      const data = (await parseJsonSafe(res)) || {};
+      if (!res.ok) throw new Error(data.error || 'Update failed');
+      setCurrentUser(data.user);
+      showToast('Profile updated');
+    } catch (err) {
+      showToast(err.message || 'Update error');
+    }
+  }
+
+  function handleLogout() {
+    window.localStorage.removeItem('token');
+    setCurrentUser(null);
+    navigate('login');
+  }
+
+  return (
+    <section className="page-container narrow">
+      <PageHeading title="My profile" description="Manage your account details." />
+
+      <form className="form-panel" onSubmit={handleSubmit}>
+        <FormField label="Full name" name="name" placeholder="Your full name" defaultValue={currentUser?.name || ''} />
+        <FormField label="Email" name="email" type="email" placeholder="you@example.com" defaultValue={currentUser?.email || ''} />
+        <FormField label="New password" name="password" type="password" placeholder="Leave blank to keep current" />
+
+        <div className="form-actions">
+          <button type="button" className="secondary-button" onClick={handleLogout}>
+            Logout
+          </button>
+          <button type="submit" className="primary-button">Save changes</button>
+        </div>
+      </form>
+    </section>
   );
 }
 
